@@ -14,7 +14,7 @@
     'use strict';
 
     let lastPanoramaId = null;
-    const downloadDelay = 25; // Delay in milliseconds between downloads
+    const downloadDelay = 1; // Delay in milliseconds between downloads
 
     // Extract Panorama ID from XHR requests
     function CaptureSourceID() {
