@@ -14,27 +14,49 @@
     'use strict';
 
     let lastPanoramaId = null;
-    const downloadDelay = 1; // Delay in milliseconds between downloads
+    const downloadDelay = 0; // Delay in milliseconds between downloads
 
-    // Extract Panorama ID from XHR requests
-    function CaptureSourceID() {
-        if (lastPanoramaId) {
-            return lastPanoramaId;
-        }
+	// Extract Panorama ID from XHR requests
+	function CaptureSourceID() {
+		if (lastPanoramaId) {
+			return lastPanoramaId;
+		}
 
-        const originalXhrOpen = XMLHttpRequest.prototype.open;
-        XMLHttpRequest.prototype.open = function(method, url) {
-            if (url.includes("4.0.0")) {
-                const regex = /https:\/\/pano\.maps\.yandex\.net\/([^\/]+)\/4\.0\.0/;
-                const match = url.match(regex);
-                if (match && match[1]) {
-                    lastPanoramaId = match[1];
-                    console.log(`Captured Panorama ID: ${lastPanoramaId}`);
-                }
-            }
-            return originalXhrOpen.apply(this, arguments);
-        };
-    }
+		const originalXhrOpen = XMLHttpRequest.prototype.open;
+		XMLHttpRequest.prototype.open = function(method, url) {
+			const regex3 = /https:\/\/pano\.maps\.yandex\.net\/([^\/]+)\/3\.0\.0/;
+			const regex4 = /https:\/\/pano\.maps\.yandex\.net\/([^\/]+)\/4\.0\.0/;
+
+			let match;
+			if (url.includes("3.0.0")) {
+				match = url.match(regex3);
+				if (match && match[1]) {
+					lastPanoramaId = match[1];
+					console.log(`Captured Panorama ID from 3.0.0: ${lastPanoramaId}`);
+				}
+			}
+			if (url.includes("4.0.0")) {
+				match = url.match(regex4);
+				if (match && match[1]) {
+					lastPanoramaId = match[1];
+					console.log(`Captured Panorama ID from 4.0.0: ${lastPanoramaId}`);
+				}
+			}
+
+			return originalXhrOpen.apply(this, arguments);
+		};
+	}
+
+	// Function to extract street name and year
+	function extractStreetAndYear() {
+		const streetElement = document.querySelector('.panorama-player-view__name');
+		const yearElement = document.querySelector('.panorama-controls-view__history .button__text');
+		const streetName = streetElement ? streetElement.textContent.trim() : 'Unknown Street';
+		const year = yearElement ? yearElement.textContent.trim() : 'Unknown Year';
+		console.log(`Street Name: ${streetName}`);
+		console.log(`Year: ${year}`);
+		return { streetName, year };
+	}
 
     // Check if a tile exists
     async function tileExists(tileUrl) {
@@ -66,10 +88,10 @@
     }
 
     // Download a single tile
-    async function downloadTile(panoramaId, res, x, y) {
+    async function downloadTile(streetName, year, panoramaId, res, x, y) {
         const tileUrl = `https://pano.maps.yandex.net/${panoramaId}/${res}.${x}.${y}`;
         const fileName = `${res}.${x}.${y}.jpg`;
-        const filePath = `panotiles/${panoramaId}/${res}/${fileName}`; // Save directly to Downloads folder
+        const filePath = `panotiles/${panoramaId} - ${streetName}, ${year}/${res}/${fileName}`; // Save directly to Downloads folder
         await new Promise(resolve => {
             GM_download({
                 url: tileUrl,
@@ -92,6 +114,9 @@
             return;
         }
 
+        // Extract street name and year
+        const { streetName, year } = extractStreetAndYear();
+
         // Get selected resolutions
         const selectedResolutions = Array.from(document.querySelectorAll('input[name="resolution"]:checked')).map(input => parseInt(input.value));
 
@@ -104,7 +129,7 @@
 
                 for (let x = 0; x <= maxX; x++) {
                     for (let y = 0; y <= maxY; y++) {
-                        await downloadTile(panoramaId, res, x, y);
+                        await downloadTile(streetName, year, panoramaId, res, x, y);
                         await new Promise(resolve => setTimeout(resolve, downloadDelay)); // Delay between downloads
                     }
                 }
